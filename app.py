@@ -3,7 +3,6 @@ import pandas as pd
 import zipfile
 import io
 
-# Page Configuration
 st.set_page_config(
     page_title="Meesho GST Pro Calculator",
     page_icon="🛍️",
@@ -11,14 +10,11 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for Modern SaaS Look
 st.markdown("""
 <style>
-    /* Main Background & Font */
     .main {
         background-color: #f8f9fa;
     }
-    /* Custom Header Banner */
     .header-banner {
         background: linear-gradient(135deg, #9c27b0 0%, #e91e63 100%);
         padding: 2rem;
@@ -37,20 +33,13 @@ st.markdown("""
         font-size: 1.05rem;
         opacity: 0.9;
     }
-    /* Stylish Metric Cards */
     div[data-testid="metric-container"] {
         background-color: #ffffff;
         border: 1px solid #e0e0e0;
         padding: 15px 20px;
         border-radius: 12px;
         box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-        transition: transform 0.2s ease;
     }
-    div[data-testid="metric-container"]:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-    }
-    /* Custom Download Button */
     .stDownloadButton button {
         background: linear-gradient(135deg, #2e7d32 0%, #4caf50 100%) !important;
         color: white !important;
@@ -58,12 +47,10 @@ st.markdown("""
         padding: 0.6rem 1.5rem !important;
         border-radius: 8px !important;
         font-weight: 600 !important;
-        box-shadow: 0 4px 10px rgba(76, 175, 80, 0.3) !important;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# Top Hero Banner
 st.markdown("""
 <div class="header-banner">
     <h1>🛍️ Meesho GST Return Pro Calculator</h1>
@@ -71,7 +58,6 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# Sidebar for Controls
 with st.sidebar:
     st.image("https://flaticon.com", width=70)
     st.header("⚙️ Settings & Upload")
@@ -86,8 +72,7 @@ with st.sidebar:
     uploaded_files = st.file_uploader(
         "2. Meesho Reports Upload Karein:", 
         type=["zip", "xlsx", "xls", "csv"], 
-        accept_multiple_files=True,
-        help="Aap ek saath multiple ZIP, Excel ya CSV files upload kar sakte hain."
+        accept_multiple_files=True
     )
     
     st.markdown("---")
@@ -111,9 +96,7 @@ def read_single_file(file_obj, file_name):
         dfs.append(pd.read_csv(file_obj))
     return dfs
 
-# Main Dashboard Area
 if not uploaded_files:
-    # Empty State Welcome Screen
     st.markdown("### 👋 Swagat Hai! Shuru Karne Ke Liye:")
     c1, c2, c3 = st.columns(3)
     with c1:
@@ -137,8 +120,6 @@ else:
             
             required_cols = ['total_taxable_value', 'tax_amount', 'gst_rate', 'customer_state']
             if all(col in df.columns for col in required_cols):
-                
-                # Data Cleaning
                 df['total_taxable_value'] = pd.to_numeric(df['total_taxable_value'], errors='coerce').fillna(0)
                 df['tax_amount'] = pd.to_numeric(df['tax_amount'], errors='coerce').fillna(0)
                 df['gst_rate'] = pd.to_numeric(df['gst_rate'], errors='coerce').fillna(0)
@@ -147,7 +128,6 @@ else:
                 df['quantity'] = pd.to_numeric(df['quantity'], errors='coerce').fillna(0) if 'quantity' in df.columns else 1
                 df['hsn_code'] = df['hsn_code'].astype(str).str.replace('.0', '', regex=False).str.strip() if 'hsn_code' in df.columns else 'N/A'
 
-                # Calculations
                 sales_df = df[df['total_taxable_value'] > 0]
                 returns_df = df[df['total_taxable_value'] < 0]
                 
@@ -161,7 +141,6 @@ else:
                 total_cgst = total_cgst_sgst / 2
                 total_sgst = total_cgst_sgst / 2
 
-                # Prepare Summaries
                 state_summary = df.groupby(['customer_state', 'gst_rate']).agg(
                     Taxable_Value=('total_taxable_value', 'sum'),
                     Tax_Amount=('tax_amount', 'sum')
@@ -175,7 +154,6 @@ else:
                 ).reset_index()
                 hsn_summary.columns = ['HSN Code', 'GST Rate (%)', 'Net Quantity', 'Net Taxable Value (₹)', 'Total Tax (₹)']
 
-                # Excel Generation
                 output = io.BytesIO()
                 with pd.ExcelWriter(output, engine='openpyxl') as writer:
                     summary_data = pd.DataFrame({
@@ -187,7 +165,6 @@ else:
                     hsn_summary.to_excel(writer, sheet_name='HSN_Wise_Table12', index=False)
                 excel_data = output.getvalue()
 
-                # Top Action Bar with Download Button
                 col_title, col_btn = st.columns([3, 1])
                 with col_title:
                     st.success(f"✅ {len(uploaded_files)} File(s) successfully processed!")
@@ -200,7 +177,6 @@ else:
                         use_container_width=True
                     )
 
-                # Organized Tabs for Clean UI
                 tab1, tab2, tab3, tab4 = st.tabs(["📊 Tax & Sales Overview", "📍 State-Wise GSTR-1", "📦 HSN-Wise Summary", "📈 Visual Analytics"])
 
                 with tab1:
@@ -224,3 +200,17 @@ else:
 
                 with tab3:
                     st.markdown("#### HSN Code Wise Summary (GSTR-1 Table 12 ke liye)")
+                    st.dataframe(hsn_summary, use_container_width=True, hide_index=True)
+
+                with tab4:
+                    st.markdown("#### Top 10 States by Net Taxable Sales")
+                    chart_data = df.groupby('customer_state')['total_taxable_value'].sum().sort_values(ascending=False).head(10)
+                    st.bar_chart(chart_data, color="#e91e63")
+
+            else:
+                st.error("⚠️ Upload ki gayi files mein zaroori columns nahi mile. Kripya Meesho ki asli GST report upload karein.")
+        else:
+            st.warning("⚠️ ZIP file ke andar koi Excel ya CSV data nahi mila.")
+            
+    except Exception as e:
+        st.error(f"❌ Error: {e}")
